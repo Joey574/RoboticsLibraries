@@ -11,8 +11,8 @@ namespace pckt {
     /// @brief Types of packets that can be sent / recieved 
     enum class Type {
         None, 
-        AckPacket,
         MovePacket,
+        AckPacket,
     };
 
 
