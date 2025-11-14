@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 
+#define READ_TIMEOUT 10
 #define MAX_PAYLOAD_SIZE 8
 #define PACKET_COUNT 3
 
@@ -16,7 +17,7 @@ namespace pckt {
 
 
     /// @brief General packet format
-    struct Packet {
+    struct __attribute__((packed)) Packet {
         public:
         uint8_t type;
        
@@ -47,7 +48,7 @@ namespace pckt {
         size_t write(const uint8_t* data, size_t len) override { return serial.write((char*)data, len); }
         int read(uint8_t* data, size_t len) override { return serial.readBytes(data, len); }
         bool available() override { return serial.available(); }
-        void clear() override { serial.flush(); }
+        void clear() override {while (serial.available()) { serial.read(); } }
 
         private:
         SoftwareSerial& serial;
@@ -63,14 +64,35 @@ namespace pckt {
             for(size_t i = 0; i < PACKET_COUNT; i++) {
                 handlers[i] = nullptr;
             }
+
+            memset(&txPacket, 0, sizeof(Packet));
+            memset(&rxPacket, 0, sizeof(Packet));
         }
 
         inline void Update() {
-            if (!transport.available()) { return; }
+            if (!transport.available()) {
 
-            size_t n = transport.read((uint8_t*)&rxPacket, sizeof(rxPacket));
-            if (n != sizeof(rxPacket)) {
-                transport.clear();
+                // reset state
+                if (reading && (millis()-receivedAt) > READ_TIMEOUT) {
+                    transport.clear();
+                    reading = false;
+                    receivedAt = 0;
+                    bytesRead = 0;
+                }
+
+                return; 
+            }
+
+            // if first byte read, set state
+            if (!reading) {
+                bytesRead = 0;
+                reading = true;
+                receivedAt = millis();
+            }
+
+            size_t remaining = sizeof(Packet) - bytesRead;
+            bytesRead += transport.read(((uint8_t*)&rxPacket)+bytesRead, remaining);
+            if (bytesRead != sizeof(Packet)) {
                 return;
             }
 
@@ -86,6 +108,11 @@ namespace pckt {
             if (handlers[rxPacket.type]) {
                 handlers[rxPacket.type](rxPacket);
             }
+
+            // reset state for next packet
+            reading = false;
+            receivedAt = 0;
+            bytesRead = 0;
         }
 
 
@@ -106,7 +133,7 @@ namespace pckt {
         /// @param type Type of packet to send
         /// @param payload Packet payload
         /// @param len Number of bytes in packet payload
-        inline void Send(Type type, const uint8_t* payload, size_t len) const {
+        inline void Send(Type type, const uint8_t* payload, size_t len) {
             txPacket.type = (int)type;
             txPacket.flags = 0b10000000;
 
@@ -121,16 +148,29 @@ namespace pckt {
         }
 
 
+        /// @brief Checks it a user defined flag was set
+        /// @tparam flag Flag [0-3] to check
+        /// @return The state of the flag
+        template <uint8_t flag> inline bool HasFlag() const {
+            static_assert(flag >= 0 && flag < 4);
+            return (rxPacket.flags << flag) & 1;
+        }
+
+
         /// @brief Sets user defined flags
         /// @tparam flag Flag [0-3] to set
         /// @param v Value [0-1] to set flag to
-        template <uint8_t flag> SetFlag(uint8_t v) {
+        template <uint8_t flag> inline void SetFlag(uint8_t v) {
             static_assert(flag >= 0 && flag < 4);
             txPacket.flags |= ((v << flag ) & 1);
         }
 
 
         private:
+        bool reading;
+        size_t bytesRead;
+        size_t receivedAt;
+
         Handler handlers[PACKET_COUNT];
         Transport& transport;
 
