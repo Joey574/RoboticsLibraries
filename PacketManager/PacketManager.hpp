@@ -36,7 +36,7 @@ namespace pckt {
         virtual size_t write(const uint8_t* data, size_t len) = 0;
 
         virtual bool available() = 0;
-        virtual void clear() = 0;
+        virtual void discard() = 0;
     }; // struct Transport
 
 
@@ -45,10 +45,10 @@ namespace pckt {
         public:
         SerialTransport(SoftwareSerial& serial) : serial(serial) {}
 
-        size_t write(const uint8_t* data, size_t len) override { return serial.write((char*)data, len); }
-        int read(uint8_t* data, size_t len) override { return serial.readBytes(data, len); }
+        size_t write(const uint8_t* data, size_t len) override { return serial.write(reinterpret_cast<char*>(data), len); }
+        int read(uint8_t* data, size_t len) override { return serial.readBytes(reinterpret_cast<char*>(data), len); }
         bool available() override { return serial.available(); }
-        void clear() override {while (serial.available()) { serial.read(); } }
+        void discard() override {while (serial.available()) { serial.read(); } }
 
         private:
         SoftwareSerial& serial;
@@ -74,7 +74,7 @@ namespace pckt {
 
                 // reset state
                 if (reading && (millis()-receivedAt) > READ_TIMEOUT) {
-                    transport.clear();
+                    transport.discard();
                     reading = false;
                     receivedAt = 0;
                     bytesRead = 0;
@@ -104,7 +104,7 @@ namespace pckt {
             // if packet has a checksum, verify it
             if (HasChecksum(rxPacket)) {
                if (rxPacket.checksum != ComputeChecksum(rxPacket)) {
-                transport.clear();
+                transport.discard();
                 return;
                }
             }
@@ -166,7 +166,7 @@ namespace pckt {
         /// @tparam flag Flag [0-3] to check
         /// @return The state of the flag
         template <uint8_t flag> inline bool HasFlag() const {
-            static_assert(flag >= 0 && flag < 4, "flag must be [0, 4]");
+            static_assert(flag < 4, "flag must be [0, 4]");
             return (rxPacket.flags & (1u << flag));
         }
 
@@ -175,7 +175,7 @@ namespace pckt {
         /// @tparam flag Flag [0-3] to set
         /// @param v Value [0-1] to set flag to
         template <uint8_t flag> inline void SetFlag(uint8_t v) {
-            static_assert(flag >= 0 && flag < 4, "flag must be [0,4]");
+            static_assert(flag < 4, "flag must be [0,4]");
             if (v) txPacket.flags |= (1u << flag);
             else txPacket.flags &= ~(1u << flag);
         }
