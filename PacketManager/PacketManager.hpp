@@ -91,7 +91,12 @@ namespace pckt {
             }
 
             size_t remaining = sizeof(Packet) - bytesRead;
-            bytesRead += transport.read(((uint8_t*)&rxPacket)+bytesRead, remaining);
+            int recv = transport.read(((uint8_t*)&rxPacket)+bytesRead, remaining);
+            if (recv <= 0) {
+                return;
+            }
+
+            bytesRead += recv;
             if (bytesRead != sizeof(Packet)) {
                 return;
             }
@@ -107,6 +112,13 @@ namespace pckt {
             // packet has been verified, call user defined handler
             if (handlers[rxPacket.type]) {
                 handlers[rxPacket.type](rxPacket);
+            }
+
+
+            // packet is marked as critical, send ack packet
+            if (HasCritical(rxPacket)) {
+                uint8_t payload = rxPacket.checksum;
+                Send(Type::AckPacket, &payload, 1);
             }
 
             // reset state for next packet
@@ -135,15 +147,17 @@ namespace pckt {
         /// @param len Number of bytes in packet payload
         inline void Send(Type type, const uint8_t* payload, size_t len) {
             txPacket.type = (int)type;
-            txPacket.flags = 0b10000000;
-
             memset(txPacket.payload, 0, MAX_PAYLOAD_SIZE);
 
             if (payload) {
                 memcpy(txPacket.payload, payload, len);
             }
 
-            txPacket.checksum = ComputeChecksum(txPacket);
+            // if checksum bit is set, compute checksum
+            if (HasChecksum(txPacket)) {
+                txPacket.checksum = ComputeChecksum(txPacket);
+            }
+
             transport.write((uint8_t*)&txPacket, sizeof(txPacket));
         }
 
@@ -152,8 +166,8 @@ namespace pckt {
         /// @tparam flag Flag [0-3] to check
         /// @return The state of the flag
         template <uint8_t flag> inline bool HasFlag() const {
-            static_assert(flag >= 0 && flag < 4);
-            return (rxPacket.flags << flag) & 1;
+            static_assert(flag >= 0 && flag < 4, "flag must be [0, 4]");
+            return (rxPacket.flags & (1u << flag));
         }
 
 
@@ -161,15 +175,32 @@ namespace pckt {
         /// @tparam flag Flag [0-3] to set
         /// @param v Value [0-1] to set flag to
         template <uint8_t flag> inline void SetFlag(uint8_t v) {
-            static_assert(flag >= 0 && flag < 4);
-            txPacket.flags |= ((v << flag ) & 1);
+            static_assert(flag >= 0 && flag < 4, "flag must be [0,4]");
+            if (v) txPacket.flags |= (1u << flag);
+            else txPacket.flags &= ~(1u << flag);
+        }
+
+
+        /// @brief Sets the checksum bit flag for the txPacket
+        /// @param v Value to set checksum bit
+        inline void SetChecksum(bool v) {
+            if (v) txPacket.flags |= 0b10000000;
+            else txPacket.flags &= 0b01111111;
+        }
+
+        
+        /// @brief Sets the critical bit flag for the txPacket
+        /// @param v Value to set critical bit
+        inline void SetCritical(bool v) { 
+            if (v) txPacket.flags |= 0b01000000;
+            else txPacket.flags &= 0b10111111;
         }
 
 
         private:
         bool reading;
         size_t bytesRead;
-        size_t receivedAt;
+        unsigned long receivedAt;
 
         Handler handlers[PACKET_COUNT];
         Transport& transport;
