@@ -45,7 +45,7 @@ namespace pckt {
         public:
         SerialTransport(SoftwareSerial& serial) : serial(serial) {}
 
-        size_t write(const uint8_t* data, size_t len) override { return serial.write(reinterpret_cast<char*>(data), len); }
+        size_t write(const uint8_t* data, size_t len) override { return serial.write(reinterpret_cast<const char*>(data), len); }
         int read(uint8_t* data, size_t len) override { return serial.readBytes(reinterpret_cast<char*>(data), len); }
         bool available() override { return serial.available(); }
         void discard() override {while (serial.available()) { serial.read(); } }
