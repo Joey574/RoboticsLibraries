@@ -41,7 +41,6 @@ namespace pckt {
         virtual size_t write(const uint8_t* data, size_t len) = 0;
 
         virtual bool available() = 0;
-        virtual void discard() = 0;
     }; // struct Transport
 
 
@@ -231,3 +230,19 @@ namespace pckt {
 
 
 } // namespace pckt
+
+namespace trns {
+
+    struct SerialTransport : public pckt::Transport {
+        public:
+        SerialTransport(SoftwareSerial& serial) : serial(serial) {}
+
+        size_t write(const uint8_t* data, size_t len) override { return serial.write(reinterpret_cast<const char*>(data), len); }
+        int read(uint8_t* data, size_t len) override { return serial.readBytes(reinterpret_cast<char*>(data), len); }
+        bool available() override { return serial.available(); }
+
+        private:
+        SoftwareSerial& serial;
+    } // struct SerialTransport
+
+} // namespace trns

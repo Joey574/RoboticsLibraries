@@ -34,10 +34,6 @@ struct TestTransportLayer : public pckt::Transport {
         return !buffer.empty();
     }
 
-    void discard() {
-        buffer.clear();
-    }
-
     std::vector<uint8_t> buffer;
 };
 

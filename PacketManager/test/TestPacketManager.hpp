@@ -46,7 +46,6 @@ namespace pckt {
         virtual size_t write(const uint8_t* data, size_t len) = 0;
 
         virtual bool available() = 0;
-        virtual void discard() = 0;
     }; // struct Transport
 
 
