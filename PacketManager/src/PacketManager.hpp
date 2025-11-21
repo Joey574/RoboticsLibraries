@@ -65,7 +65,7 @@ namespace pckt {
         inline void Update() {
             if (!transport.available()) {
 
-                // reset state
+                // message timed out, reset state
                 if (reading && (millis()-receivedAt) > READ_TIMEOUT) {
                     ResetState();
                 }
@@ -73,50 +73,7 @@ namespace pckt {
                 return; 
             }
 
-            // if first byte read, set state
-            if (!reading) {
-                bytesRead = 0;
-                reading = true;
-                receivedAt = millis();
-            }
-
-            size_t remaining = sizeof(Packet) - bytesRead;
-            size_t recv = transport.read(rxPacket.self()+bytesRead, remaining);
-            if (recv == 0) return;
-
-            // read enough for magic num, verify it, before we continue
-            bytesRead += recv;
-            if (bytesRead >= sizeof(rxPacket.magic)) {
-                if (rxPacket.magic != MAGIC_NUM) {
-                    MoveHeadToNextMagic();
-                    return;
-                }
-            }
-
-            // not enough for a full packet, wait for more
-            if (bytesRead != sizeof(Packet)) {
-                return;
-            }
-
-            // verify checksum
-            if (rxPacket.checksum != ComputeChecksum(rxPacket)) {
-                MoveHeadToNextMagic();
-                return;
-            }
-
-            // packet has been verified, call user defined handler
-            const uint8_t t = rxPacket.type;
-            if (t < PACKET_COUNT) {
-                if (handlers[rxPacket.type]) {
-                    handlers[rxPacket.type](rxPacket);
-                }
-            } else {
-                // malformed, type of out range, move to next magic
-                MoveHeadToNextMagic();
-            }
-
-            // reset state for next packet
-            ResetState();
+            while (transport.available()) { TryReadPacket(); }
         }
 
 
@@ -139,7 +96,7 @@ namespace pckt {
         /// @param len Number of bytes in packet payload
         inline void Send(Type type, const uint8_t* payload, size_t len) {
             txPacket.magic = MAGIC_NUM;
-            txPacket.type = (int)type;
+            txPacket.type = (uint8_t)type;
             memset(txPacket.payload, 0, MAX_PAYLOAD_SIZE);
 
             if (len > MAX_PAYLOAD_SIZE) len = MAX_PAYLOAD_SIZE;
@@ -191,6 +148,7 @@ namespace pckt {
 
         /// @brief Resets internal state
         inline void ResetState() {
+            rxPacket.magic = 0;
             reading = false;
             receivedAt = 0;
             bytesRead = 0;
@@ -205,8 +163,8 @@ namespace pckt {
             uint16_t sum2 = 0;
 
             for (size_t i = 0; i < sizeof(Packet)-sizeof(packet.checksum); i++) {
-                sum1 = (sum1 + ((uint8_t*)&packet)[i]);
-                sum2 = (sum2 + sum1);
+                sum1 = (sum1 + ((uint8_t*)&packet)[i]) % 255;
+                sum2 = (sum2 + sum1) % 255;
             }
 
             return (sum2 << 8) | sum1;
@@ -224,6 +182,53 @@ namespace pckt {
             }
 
             // no magic found, reset, keep buffer to keep looking
+            ResetState();
+        }
+
+
+        /// @brief Attempts to read packet from transport buffer
+        inline void TryReadPacket() {
+            // if first byte read, set state
+            if (!reading) {
+                bytesRead = 0;
+                reading = true;
+                receivedAt = millis();
+            }
+
+            size_t remaining = sizeof(Packet) - bytesRead;
+            int recv = transport.read(rxPacket.self()+bytesRead, remaining);
+            if (recv <= 0) return;
+
+            // read enough for magic num, verify it, before we continue
+            bytesRead += recv;
+            if (bytesRead >= sizeof(rxPacket.magic)) {
+                if (rxPacket.magic != MAGIC_NUM) {
+                    MoveHeadToNextMagic();
+                    return;
+                }
+            }
+
+            // not enough for a full packet, wait for more
+            if (bytesRead != sizeof(Packet)) {
+                return;
+            }
+
+            // verify checksum
+            if (rxPacket.checksum != ComputeChecksum(rxPacket)) {
+                MoveHeadToNextMagic();
+                return;
+            }
+
+            // packet has been verified, call user defined handler
+            const uint8_t t = rxPacket.type;
+            if (t < PACKET_COUNT) {
+                if (handlers[rxPacket.type]) handlers[rxPacket.type](rxPacket);
+            } else {
+                // malformed, type of out range, move to next magic
+                MoveHeadToNextMagic();
+            }
+
+            // reset state for next packet
             ResetState();
         }
 
