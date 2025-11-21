@@ -86,9 +86,12 @@ struct TestSuite {
             TestSuite::elapsed++;
         }
 
+        double failedPercent = 100.0 * (double)TestSuite::failed / (double)packetsToSend;
+        double recvPercent =   100.0 * (double)TestSuite::received / (double)packetsToSend;
+
         std::cout << "\t" << TestSuite::elapsed << " updates elapsed\n";
-        std::cout << "\tFailed: " << TestSuite::failed << "/" << packetsToSend << " packets\n";
-        std::cout << "\tRecieved " << TestSuite::received << "/" << packetsToSend << " packets\n\n";
+        std::cout << "\tFailed: " << TestSuite::failed << "/" << packetsToSend << " packets (" << failedPercent << "%)\n";
+        std::cout << "\tRecieved " << TestSuite::received << "/" << packetsToSend << " packets (" << recvPercent << "%)\n\n";
     }
     static void T2TestManager(size_t packetsToSend, size_t interference) {
         TestSuite::elapsed = 0;
@@ -125,9 +128,12 @@ struct TestSuite {
             TestSuite::elapsed++;
         }
 
+        double failedPercent = 100.0 * (long double)TestSuite::failed /   (long double)packetsToSend;
+        double recvPercent =   100.0 * (long double)TestSuite::received / (long double)packetsToSend;
+
         std::cout << "\t" << TestSuite::elapsed << " updates elapsed\n";
-        std::cout << "\tFailed: " << TestSuite::failed << "/" << packetsToSend << " packets\n";
-        std::cout << "\tRecieved " << TestSuite::received << "/" << packetsToSend << " packets\n\n";
+        std::cout << "\tFailed: " << TestSuite::failed << "/" << packetsToSend << " packets (" << failedPercent << "%)\n";
+        std::cout << "\tRecieved " << TestSuite::received << "/" << packetsToSend << " packets (" << recvPercent << "%)\n\n";
     }
     static void T3TestManager(size_t packetsToSend) {
         TestSuite::elapsed = 0;
@@ -157,9 +163,12 @@ struct TestSuite {
             TestSuite::elapsed++;
         }
 
+        double failedPercent = 100.0 * (long double)TestSuite::failed /   (long double)packetsToSend;
+        double recvPercent = 100.0 *   (long double)TestSuite::received / (long double)((packetsToSend+1)/2);
+
         std::cout << "\t" << TestSuite::elapsed << " updates elapsed\n";
-        std::cout << "\tFailed: " << TestSuite::failed << "/" << packetsToSend << " packets\n";
-        std::cout << "\tRecieved " << TestSuite::received << "/" << (packetsToSend+1)/2 << " packets\n\n";
+        std::cout << "\tFailed: " << TestSuite::failed << "/" << packetsToSend/2 << " packets (" << failedPercent << "%)\n";
+        std::cout << "\tRecieved " << TestSuite::received << "/" << (packetsToSend+1)/2 << " packets (" << recvPercent << "%)\n\n";
     }
     static void T4TestManager(size_t packetsToSend) {
         TestSuite::elapsed = 0;
@@ -189,9 +198,12 @@ struct TestSuite {
             TestSuite::elapsed++;
         }
 
+        double failedPercent = 100.0 * (long double)TestSuite::failed /   (long double)packetsToSend;
+        double recvPercent =   100.0 * (long double)TestSuite::received / (long double)packetsToSend;
+
         std::cout << "\t" << TestSuite::elapsed << " updates elapsed\n";
-        std::cout << "\tFailed: " << TestSuite::failed << "/" << packetsToSend << " packets\n";
-        std::cout << "\tRecieved " << TestSuite::received << "/" << packetsToSend << " packets\n\n";
+        std::cout << "\tFailed: " << TestSuite::failed << "/" << packetsToSend << " packets (" << failedPercent << "%)\n";
+        std::cout << "\tRecieved " << TestSuite::received << "/" << packetsToSend << " packets (" << recvPercent << "%)\n\n";
     }
     static void T5TestManager(size_t packetsToSend) {
         TestSuite::elapsed = 0;
@@ -227,9 +239,11 @@ struct TestSuite {
             TestSuite::elapsed++;
         }
 
+        double failedPercent = 100.0 * (double)TestSuite::failed / (double)packetsToSend;
+
         std::cout << "\t" << TestSuite::elapsed << " updates elapsed\n";
-        std::cout << "\tFailed: " << TestSuite::failed << "/" << packetsToSend << " packets\n";
-        std::cout << "\tRecieved " << TestSuite::received << "/" << packetsToSend << " malformed packets\n\n";
+        std::cout << "\tFailed: " << TestSuite::failed << "/" << packetsToSend << " packets (" << failedPercent << "%)\n";
+        std::cout << "\tRecieved " << TestSuite::received << "/0" << " packets\n\n";
     }
 };
 
@@ -239,9 +253,9 @@ size_t TestSuite::failed = 0;
 uint8_t TestSuite::payload[MAX_PAYLOAD_SIZE] = { 0xCC, 0xCC, 0xCC, 0xFF, 0xFF, 0xFF, 0xAA, 0xAA };
 
 int main() {
-    TestSuite::T1TestManager(10000);
-    TestSuite::T2TestManager(10000, 53);
-    TestSuite::T3TestManager(10000);
-    TestSuite::T4TestManager(10000);
-    TestSuite::T5TestManager(10000);
+    TestSuite::T1TestManager(5000000);
+    TestSuite::T2TestManager(5000000, 2*sizeof(pckt::Packet));
+    TestSuite::T3TestManager(5000000);
+    TestSuite::T4TestManager(5000000);
+    TestSuite::T5TestManager(5000000);
 }

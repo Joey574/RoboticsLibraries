@@ -27,7 +27,7 @@ namespace pckt {
         uint8_t flags;
 
         uint8_t payload[MAX_PAYLOAD_SIZE];
-        uint8_t checksum;
+        uint16_t checksum;
 
         inline uint8_t* self() { return reinterpret_cast<uint8_t*>(this); }
         inline const uint8_t* self() const { return reinterpret_cast<const uint8_t*>(this); }
@@ -197,19 +197,19 @@ namespace pckt {
         }
 
 
-        /// @brief Compute mod 256 checksum over packet
+        /// @brief Compute the fletcher16 checksum
         /// @param packet Packet to compute checksum from
         /// @return Computed checksum
-        static inline uint8_t ComputeChecksum(const Packet& packet) {
-            uint8_t sum = 0;
+        static inline uint16_t ComputeChecksum(const Packet& packet) {
+            uint16_t sum1 = 0;
+            uint16_t sum2 = 0;
 
-            sum += packet.type;
-            sum += packet.flags;
-            for (size_t i = 0; i < sizeof(packet.payload); i++) {
-                sum += packet.payload[i];
+            for (size_t i = 0; i < sizeof(Packet)-sizeof(packet.checksum); i++) {
+                sum1 = (sum1 + ((uint8_t*)&packet)[i]);
+                sum2 = (sum2 + sum1);
             }
 
-            return sum;
+            return (sum2 << 8) | sum1;
         }
 
         /// @brief Updates the rxPacket buffer head to the next magic number
