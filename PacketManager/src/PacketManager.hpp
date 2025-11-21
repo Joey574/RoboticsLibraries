@@ -23,7 +23,7 @@ namespace pckt {
         uint8_t magic = MAGIC_NUM;
         uint8_t type;
        
-        // 8th bit -> | tbd | critical | tbd | tbd | user#4 | user#3 | user#2 | user#1 | <- 1st bit
+        // 8th bit -> | critical | tbd | tbd | tbd | user#4 | user#3 | user#2 | user#1 | <- 1st bit
         uint8_t flags;
 
         uint8_t payload[MAX_PAYLOAD_SIZE];
@@ -61,6 +61,7 @@ namespace pckt {
             ResetState();
         }
 
+        /// @brief Checks transport buffer for data and attempts to parse packet
         inline void Update() {
             if (!transport.available()) {
 
@@ -97,7 +98,7 @@ namespace pckt {
                 return;
             }
 
-            // veridy checksum
+            // verify checksum
             if (rxPacket.checksum != ComputeChecksum(rxPacket)) {
                 MoveHeadToNextMagic();
                 return;
@@ -171,8 +172,8 @@ namespace pckt {
         /// @brief Sets the critical bit flag for the txPacket
         /// @param v Value to set critical bit
         inline void SetCritical(bool v) { 
-            if (v) txPacket.flags |= 0b01000000;
-            else txPacket.flags &= 0b10111111;
+            if (v) txPacket.flags |= 0b10000000;
+            else txPacket.flags &= 0b01111111;
         }
 
 
@@ -188,6 +189,7 @@ namespace pckt {
         Packet rxPacket;
 
 
+        /// @brief Resets internal state
         inline void ResetState() {
             reading = false;
             receivedAt = 0;
@@ -210,6 +212,7 @@ namespace pckt {
             return sum;
         }
 
+        /// @brief Updates the rxPacket buffer head to the next magic number
         inline void MoveHeadToNextMagic() {
             // search for magic num in bytes already read
             for (size_t i = 1; i < bytesRead; i++) {
@@ -225,7 +228,7 @@ namespace pckt {
         }
 
 
-        static inline bool HasCritical(const Packet& packet) { return packet.flags & 0b01000000; }
+        static inline bool HasCritical(const Packet& packet) { return packet.flags & 0b10000000; }
     }; // struct PacketManager
 
 
@@ -245,4 +248,4 @@ namespace trns {
         SoftwareSerial& serial;
     } // struct SerialTransport
 
-} // namespace trns
+}; // namespace trns
