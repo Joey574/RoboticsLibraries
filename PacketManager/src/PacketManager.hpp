@@ -110,16 +110,16 @@ namespace pckt {
         /// @brief Checks it a user defined flag was set
         /// @tparam flag Flag [0-3] to check
         /// @return The state of the flag
-        template <uint8_t flag> inline bool HasFlag() const {
-            static_assert(flag < 4, "flag must be [0, 3]");
-            return (rxPacket.flags & (1u << flag));
+        template <uint8_t idx> inline static bool HasFlag(const Packet& packet) {
+            static_assert(idx < 4, "flag must be [0, 3]");
+            return (packet.flags & (1u << idx));
         }
 
 
         /// @brief Sets user defined flags
         /// @tparam flag Flag [0-3] to set
         /// @param v Value [0-1] to set flag to
-        template <uint8_t flag> inline void SetFlag(uint8_t v) {
+        template <uint8_t flag> inline void SetFlag(bool v) {
             static_assert(flag < 4, "flag must be [0,3]");
             if (v) txPacket.flags |= (1u << flag);
             else txPacket.flags &= ~(1u << flag);
