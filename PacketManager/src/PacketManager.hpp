@@ -251,6 +251,6 @@ namespace trns {
 
         private:
         SoftwareSerial& serial;
-    } // struct SerialTransport
+    }; // struct SerialTransport
 
-}; // namespace trns
+} // namespace trns
