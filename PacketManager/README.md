@@ -18,6 +18,10 @@ pckt::PacketManager manager(transport); // <- creates packet manager
 /// @param packet This is the packet we recieved
 void dataCallback(const pckt::Packet& packet) {
     printf("We recieved a packet!\n");
+
+    // we can get the passed data by indexing into packet.payload
+    uint8_t x = packet.payload[0];
+    uint8_t y = packet.payload[1];
 }
 
 void setup() {
@@ -48,6 +52,7 @@ void setup() {
 void loop() {
     // this defines the payload, ie data, we want to send, it can be up to MAX_PAYLOAD_SIZE
     // default is 8, but you can change that as needed in the source
+    // in this case we are sending the numbers 1 and 2
     uint8_t payload[2] = { 1, 2 };
     size_t len = 2;
 
